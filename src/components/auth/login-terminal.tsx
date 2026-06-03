@@ -61,7 +61,7 @@ export function LoginTerminal() {
               loading={loading}
               onClick={() => {
                 setLoading(true);
-                signIn("google", { callbackUrl: "/" });
+                signIn("google", { callbackUrl: "/dashboard" });
               }}
             >
               Connect Google + YouTube Account

@@ -20,7 +20,7 @@ import {
 import { signOut } from "next-auth/react";
 
 const NAV = [
-  { href: "/", icon: LayoutDashboard, label: "Command Center", key: "home" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Command Center", key: "home" },
   { href: "/analytics", icon: BarChart3, label: "Analytics", key: "analytics" },
   { href: "/competitors", icon: Users, label: "Competitors", key: "competitors" },
   { href: "/trends", icon: TrendingUp, label: "Trend Engine", key: "trends" },
@@ -57,8 +57,8 @@ export function Sidebar() {
         </div>
         {NAV.map((item) => {
           const isActive =
-            item.href === "/"
-              ? pathname === "/"
+            item.href === "/dashboard"
+              ? pathname === "/dashboard"
               : pathname.startsWith(item.href);
           return (
             <Link
