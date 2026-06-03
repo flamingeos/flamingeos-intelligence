@@ -12,7 +12,10 @@
       "Bash(git rm *)",
       "Bash(git commit *)",
       "Bash(gh auth *)",
-      "Bash(git --version)"
+      "Bash(git --version)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git config *)"
     ]
   }
 }
