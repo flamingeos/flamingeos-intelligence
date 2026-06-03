@@ -1,0 +1,244 @@
+/* Google Fonts — must be first */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
+@import "tailwindcss";
+
+/* ============================================================
+   FLAMINGEOS INTELLIGENCE — Cyber-Industrial Terminal Theme
+   ============================================================ */
+
+:root {
+  /* Core palette — phosphor monitor */
+  --bg:          #0a0a0a;
+  --fg:          #33ff00;
+  --fg-dim:      #1f7a00;
+  --fg-muted:    #1f521f;
+  --amber:       #ffb000;
+  --amber-dim:   #7a5500;
+  --error:       #ff3333;
+  --error-dim:   #7a1a1a;
+  --border:      #1f521f;
+  --border-hi:   #33ff00;
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* Glow */
+  --glow-green:  0 0 5px rgba(51, 255, 0, 0.5), 0 0 10px rgba(51, 255, 0, 0.15);
+  --glow-amber:  0 0 5px rgba(255, 176, 0, 0.5), 0 0 10px rgba(255, 176, 0, 0.15);
+  --glow-red:    0 0 5px rgba(255, 51, 51, 0.5), 0 0 10px rgba(255, 51, 51, 0.15);
+}
+
+@theme inline {
+  --color-background:  var(--bg);
+  --color-foreground:  var(--fg);
+  --color-fg-dim:      var(--fg-dim);
+  --color-fg-muted:    var(--fg-muted);
+  --color-amber:       var(--amber);
+  --color-amber-dim:   var(--amber-dim);
+  --color-terminal-error: var(--error);
+  --color-border:      var(--border);
+  --color-border-hi:   var(--border-hi);
+  --font-mono:         var(--font-mono);
+  --radius:            0px;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+html {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+  /* Subtle scanline effect */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+}
+
+/* Selection */
+::selection {
+  background-color: var(--fg);
+  color: var(--bg);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); border-left: 1px solid var(--border); }
+::-webkit-scrollbar-thumb { background: var(--fg-muted); }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-dim); }
+
+/* Focus */
+:focus-visible {
+  outline: 1px solid var(--fg);
+  outline-offset: 2px;
+}
+
+/* Links */
+a {
+  color: var(--fg);
+  text-decoration: none;
+}
+a:hover {
+  text-shadow: var(--glow-green);
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg);
+  text-shadow: var(--glow-green);
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes scanline-move {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { transform: none; opacity: 1; }
+  25%  { transform: translateX(2px) skewX(-1deg); opacity: 0.9; }
+  75%  { transform: translateX(-2px) skewX(1deg); opacity: 0.9; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { text-shadow: var(--glow-green); }
+  50%       { text-shadow: 0 0 15px rgba(51, 255, 0, 0.8), 0 0 30px rgba(51, 255, 0, 0.4); }
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+.animate-blink      { animation: blink 1s step-end infinite; }
+.animate-fade-in    { animation: fade-in 0.3s ease-out both; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+.text-glow          { text-shadow: var(--glow-green); }
+.text-glow-amber    { text-shadow: var(--glow-amber); }
+.text-glow-red      { text-shadow: var(--glow-red); }
+
+.terminal-border    { border: 1px solid var(--border); }
+.terminal-border-hi { border: 1px solid var(--fg); }
+
+/* CRT vignette overlay */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* Scanline moving line */
+.scanline {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(51, 255, 0, 0.04),
+    transparent
+  );
+  animation: scanline-move 8s linear infinite;
+  z-index: 9998;
+}
+
+/* Window pane */
+.terminal-window {
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.terminal-window-title {
+  border-bottom: 1px solid var(--border);
+  padding: 0.25rem 0.75rem;
+  background: rgba(51, 255, 0, 0.05);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+}
+
+.terminal-window-title::before {
+  content: '+--';
+  color: var(--fg-muted);
+}
+
+.terminal-window-title::after {
+  content: '--+';
+  color: var(--fg-muted);
+  margin-left: auto;
+}
+
+/* Status badges */
+.badge-ok    { color: var(--fg);    border: 1px solid var(--fg-muted); }
+.badge-warn  { color: var(--amber); border: 1px solid var(--amber-dim); }
+.badge-err   { color: var(--error); border: 1px solid var(--error-dim); }
+.badge-dim   { color: var(--fg-dim); border: 1px solid var(--border); }
+
+/* Row hover */
+.row-hover:hover {
+  background: rgba(51, 255, 0, 0.04);
+}
+
+/* Glitch hover */
+.glitch-hover:hover {
+  animation: glitch-2 0.3s ease-in-out;
+}
