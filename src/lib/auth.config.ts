@@ -1,15 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
 
-// Lightweight config — no Prisma, Edge-runtime safe.
-// Used by middleware only.
+// Lightweight config — no Prisma, no providers, Edge-runtime safe.
+// Used by middleware only. Providers are defined in auth.ts (Node.js only).
 export const authConfig: NextAuthConfig = {
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-  ],
+  providers: [],
   pages: {
     signIn: "/login",
     error: "/login",
