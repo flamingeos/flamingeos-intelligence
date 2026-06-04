@@ -130,6 +130,52 @@ export async function analyzeCompetitorVideoById(videoId: string) {
   return analysis;
 }
 
+export async function updateCompetitorVideo(id: string, data: { title: string }) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.competitorVideo.updateMany({
+    where: { id, competitor: { userId: session.user.id } },
+    data,
+  });
+
+  revalidatePath("/competitors");
+}
+
+export async function addManualCompetitorVideo(
+  competitorId: string,
+  data: { title: string; youtubeUrl?: string; viewCount?: number }
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const competitor = await db.competitor.findFirst({
+    where: { id: competitorId, userId: session.user.id },
+  });
+  if (!competitor) throw new Error("Competitor not found");
+
+  let videoId = `manual-${Date.now()}`;
+  if (data.youtubeUrl) {
+    const match =
+      data.youtubeUrl.match(/[?&]v=([^&#]+)/) ??
+      data.youtubeUrl.match(/youtu\.be\/([^?#]+)/);
+    if (match) videoId = match[1];
+  }
+
+  const created = await db.competitorVideo.create({
+    data: {
+      competitorId,
+      videoId,
+      title: data.title,
+      publishedAt: new Date(),
+      viewCount: BigInt(data.viewCount ?? 0),
+    },
+  });
+
+  revalidatePath("/competitors");
+  return { ...created, viewCount: Number(created.viewCount) };
+}
+
 export async function deleteCompetitorVideo(videoId: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

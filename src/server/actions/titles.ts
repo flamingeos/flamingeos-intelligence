@@ -65,6 +65,82 @@ export async function deleteTitleReport(id: string) {
   revalidatePath("/titles");
 }
 
+export async function updateTitleInReport(reportId: string, titleIndex: number, newTitle: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.titleReport.findFirst({
+    where: { id: reportId, userId: session.user.id },
+  });
+  if (!report) throw new Error("Not found");
+
+  const titles = report.titles as { title: string; [key: string]: unknown }[];
+  if (titleIndex < 0 || titleIndex >= titles.length) throw new Error("Invalid index");
+  titles[titleIndex] = { ...titles[titleIndex], title: newTitle };
+
+  await db.titleReport.update({
+    where: { id: reportId },
+    data: {
+      titles: titles as object[],
+      topTitle: titleIndex === 0 ? newTitle : (report.topTitle ?? ""),
+    },
+  });
+
+  revalidatePath("/titles");
+}
+
+export async function addTitleToReport(reportId: string, title: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.titleReport.findFirst({
+    where: { id: reportId, userId: session.user.id },
+  });
+  if (!report) throw new Error("Not found");
+
+  const newEntry = {
+    title,
+    overallScore: 0,
+    ctrPrediction: 0,
+    curiosityScore: 0,
+    emotionScore: 0,
+    searchabilityScore: 0,
+    clarityScore: 0,
+    reasoning: "Manually added",
+  };
+
+  const titles = [...(report.titles as object[]), newEntry];
+
+  await db.titleReport.update({
+    where: { id: reportId },
+    data: {
+      titles,
+      topTitle: report.topTitle || title,
+    },
+  });
+
+  revalidatePath("/titles");
+}
+
+export async function createManualTitleSession(topic: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.titleReport.create({
+    data: {
+      userId: session.user.id,
+      topic,
+      targetKeywords: [],
+      titles: [],
+      topTitle: "",
+      aiModel: "manual",
+    },
+  });
+
+  revalidatePath("/titles");
+  return report;
+}
+
 export async function deleteTitleFromReport(reportId: string, titleIndex: number) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

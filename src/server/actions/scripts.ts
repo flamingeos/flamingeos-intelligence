@@ -121,6 +121,46 @@ export async function getScript(id: string) {
   });
 }
 
+export async function updateScript(
+  id: string,
+  data: { title?: string; hook?: string; fullScript?: string }
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const updateData: Record<string, unknown> = {};
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.hook !== undefined) updateData.hook = data.hook;
+  if (data.fullScript !== undefined) {
+    updateData.fullScript = data.fullScript;
+    updateData.wordCount = data.fullScript.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  await db.scriptReport.updateMany({ where: { id, userId: session.user.id }, data: updateData });
+  revalidatePath("/scripts");
+}
+
+export async function createManualScript(title: string, scriptType: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.scriptReport.create({
+    data: {
+      userId: session.user.id,
+      title,
+      topic: title,
+      scriptType,
+      fullScript: "",
+      openLoops: [],
+      retentionPoints: [],
+      aiModel: "manual",
+    },
+  });
+
+  revalidatePath("/scripts");
+  return report;
+}
+
 export async function deleteScript(id: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

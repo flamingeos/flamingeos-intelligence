@@ -11,8 +11,10 @@ import {
   syncCompetitorVideos,
   analyzeCompetitorVideoById,
   deleteCompetitorVideo,
+  updateCompetitorVideo,
+  addManualCompetitorVideo,
 } from "@/server/actions/competitors";
-import { Users, RefreshCw, Trash2, Eye, Zap } from "lucide-react";
+import { Users, RefreshCw, Trash2, Eye, Zap, Pencil, Plus, Check, X } from "lucide-react";
 
 type CompetitorWithVideos = {
   id: string;
@@ -35,15 +37,68 @@ type CompetitorWithVideos = {
   _count: { videos: number };
 };
 
+// ── inline video title edit ───────────────────────────────────────────────────
+
+function InlineVideoTitle({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  function save() {
+    if (draft.trim()) { onSave(draft.trim()); setEditing(false); }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 flex-1 min-w-0">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+          autoFocus
+          className="flex-1 bg-transparent border border-[var(--fg)] text-[var(--fg)] font-mono text-sm px-2 py-0.5 outline-none min-w-0"
+        />
+        <button onClick={save} className="text-[var(--fg)] p-0.5 shrink-0"><Check className="h-3 w-3" /></button>
+        <button onClick={() => setEditing(false)} className="text-[var(--fg-muted)] p-0.5 shrink-0"><X className="h-3 w-3" /></button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-1 group min-w-0">
+      <span className="text-sm font-mono text-[var(--fg)] truncate flex-1">{value}</span>
+      <button
+        onClick={() => { setDraft(value); setEditing(true); }}
+        className="shrink-0 opacity-0 group-hover:opacity-100 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-opacity p-0.5"
+        title="Edit title"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── main panel ────────────────────────────────────────────────────────────────
+
 export function CompetitorsPanel({ competitors: initialCompetitors }: {
   competitors: CompetitorWithVideos[];
 }) {
   const [competitors, setCompetitors] = useState(initialCompetitors);
-
   const [newChannel, setNewChannel] = useState("");
   const [message, setMessage] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Manual video add form
+  const [showAddVideo, setShowAddVideo] = useState(false);
+  const [manualVideoTitle, setManualVideoTitle] = useState("");
+  const [manualVideoUrl, setManualVideoUrl] = useState("");
+  const [manualVideoViews, setManualVideoViews] = useState("");
 
   function handleAdd() {
     if (!newChannel.trim()) return;
@@ -64,6 +119,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
       try {
         const result = await syncCompetitorVideos(competitorId);
         setMessage(`[OK] synced — ${result.newVideos} new videos`);
+        window.location.reload();
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "sync failed"}`);
       }
@@ -98,18 +154,67 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
     startTransition(async () => {
       try {
         await deleteCompetitorVideo(videoId);
-        setCompetitors((prev) =>
-          prev.map((c) =>
-            c.id === competitorId
-              ? { ...c, videos: c.videos.filter((v) => v.id !== videoId) }
-              : c
-          )
-        );
+        patchVideos(competitorId, (prev) => prev.filter((v) => v.id !== videoId));
         setMessage("[OK] video removed");
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "delete failed"}`);
       }
     });
+  }
+
+  function handleEditVideoTitle(videoId: string, competitorId: string, title: string) {
+    startTransition(async () => {
+      try {
+        await updateCompetitorVideo(videoId, { title });
+        patchVideos(competitorId, (prev) =>
+          prev.map((v) => (v.id === videoId ? { ...v, title } : v))
+        );
+        setMessage("[OK] title updated");
+      } catch {
+        setMessage("[ERR] update failed");
+      }
+    });
+  }
+
+  function handleAddManualVideo(competitorId: string) {
+    if (!manualVideoTitle.trim()) return;
+    startTransition(async () => {
+      try {
+        const result = await addManualCompetitorVideo(competitorId, {
+          title: manualVideoTitle.trim(),
+          youtubeUrl: manualVideoUrl.trim() || undefined,
+          viewCount: manualVideoViews ? parseInt(manualVideoViews) : 0,
+        });
+        const newVideo = {
+          id: result.id,
+          videoId: result.videoId,
+          title: result.title,
+          publishedAt: result.publishedAt,
+          viewCount: result.viewCount,
+          viewVelocity: null,
+          analyzed: false,
+        };
+        patchVideos(competitorId, (prev) => [newVideo, ...prev]);
+        setManualVideoTitle("");
+        setManualVideoUrl("");
+        setManualVideoViews("");
+        setShowAddVideo(false);
+        setMessage("[OK] video added manually");
+      } catch (e) {
+        setMessage(`[ERR] ${e instanceof Error ? e.message : "add failed"}`);
+      }
+    });
+  }
+
+  function patchVideos(
+    competitorId: string,
+    fn: (prev: CompetitorWithVideos["videos"]) => CompetitorWithVideos["videos"]
+  ) {
+    setCompetitors((prev) =>
+      prev.map((c) =>
+        c.id === competitorId ? { ...c, videos: fn(c.videos) } : c
+      )
+    );
   }
 
   const selected = competitors.find((c) => c.id === selectedId);
@@ -140,22 +245,18 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
           <div className="flex-1">
             <TerminalInput
               prompt="channel-id>"
-              placeholder="UCxxxxxxx or channel ID"
+              placeholder="UCxxxxxxx or @handle"
               value={newChannel}
               onChange={(e) => setNewChannel(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
           </div>
-          <TerminalButton
-            variant="primary"
-            loading={isPending}
-            onClick={handleAdd}
-          >
+          <TerminalButton variant="primary" loading={isPending} onClick={handleAdd}>
             Track
           </TerminalButton>
         </div>
         <div className="text-[var(--fg-muted)] text-xs font-mono mt-2">
-          // enter youtube channel ID (UCxxxxx) — find in channel URL
+          // enter youtube channel ID (UCxxxxx) or handle (@name)
         </div>
       </TerminalCard>
 
@@ -174,7 +275,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
           {competitors.map((comp) => (
             <div
               key={comp.id}
-              onClick={() => setSelectedId(comp.id === selectedId ? null : comp.id)}
+              onClick={() => { setSelectedId(comp.id === selectedId ? null : comp.id); setShowAddVideo(false); }}
               className={`terminal-window p-3 cursor-pointer transition-all ${
                 selectedId === comp.id
                   ? "border-[var(--fg)] bg-[rgba(51,255,0,0.05)]"
@@ -206,7 +307,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleRemove(comp.id); }}
                     className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1"
-                    title="Remove"
+                    title="Remove competitor"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -239,33 +340,82 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
                 </div>
               </div>
 
-              <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest mb-2">
-                // recent uploads
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest">
+                  // videos ({selected.videos.length})
+                </div>
+                <button
+                  onClick={() => setShowAddVideo((v) => !v)}
+                  className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
+                  title="Add video manually"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
               </div>
 
+              {/* Manual add video form */}
+              {showAddVideo && (
+                <div className="border border-[var(--fg-dim)] p-3 mb-3 space-y-2">
+                  <div className="text-[var(--fg-muted)] text-[10px] font-mono uppercase tracking-widest">
+                    // add video manually
+                  </div>
+                  <TerminalInput
+                    prompt="title>"
+                    placeholder="video title..."
+                    value={manualVideoTitle}
+                    onChange={(e) => setManualVideoTitle(e.target.value)}
+                  />
+                  <TerminalInput
+                    prompt="url>"
+                    placeholder="youtube.com/watch?v=... (optional)"
+                    value={manualVideoUrl}
+                    onChange={(e) => setManualVideoUrl(e.target.value)}
+                  />
+                  <TerminalInput
+                    prompt="views>"
+                    placeholder="view count (optional)"
+                    value={manualVideoViews}
+                    onChange={(e) => setManualVideoViews(e.target.value.replace(/\D/g, ""))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddManualVideo(selected.id)}
+                  />
+                  <div className="flex gap-2">
+                    <TerminalButton variant="primary" size="sm" loading={isPending} onClick={() => handleAddManualVideo(selected.id)}>
+                      Add Video
+                    </TerminalButton>
+                    <TerminalButton variant="secondary" size="sm" onClick={() => { setShowAddVideo(false); setManualVideoTitle(""); setManualVideoUrl(""); setManualVideoViews(""); }}>
+                      Cancel
+                    </TerminalButton>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                {selected.videos.length === 0 ? (
+                {selected.videos.length === 0 && !showAddVideo ? (
                   <div className="text-[var(--fg-muted)] text-xs font-mono py-4 text-center border border-[var(--border)]">
-                    no videos synced — click refresh icon
+                    no videos synced — click refresh or add manually with +
                   </div>
                 ) : (
                   selected.videos.map((v) => (
                     <div key={v.id} className="border border-[var(--border)] p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-mono text-[var(--fg)] truncate">{v.title}</div>
-                          <div className="flex gap-3 text-xs text-[var(--fg-muted)] font-mono mt-1">
+                          <InlineVideoTitle
+                            value={v.title}
+                            onSave={(title) => handleEditVideoTitle(v.id, selected.id, title)}
+                          />
+                          <div className="flex gap-3 text-xs text-[var(--fg-muted)] font-mono mt-1 flex-wrap">
                             <span><Eye className="h-3 w-3 inline mr-1" />{formatNumber(v.viewCount)}</span>
                             <span>{relativeTime(v.publishedAt)}</span>
                             {v.viewVelocity && (
-                              <span className="text-[var(--amber)]">
-                                {v.viewVelocity.toFixed(0)} v/day
-                              </span>
+                              <span className="text-[var(--amber)]">{v.viewVelocity.toFixed(0)} v/day</span>
+                            )}
+                            {v.videoId.startsWith("manual-") && (
+                              <span className="text-[var(--fg-dim)]">[manual]</span>
                             )}
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0 items-center">
-                          {!v.analyzed && (
+                          {!v.analyzed && !v.videoId.startsWith("manual-") && (
                             <TerminalButton
                               variant="secondary"
                               size="sm"
@@ -277,9 +427,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
                             </TerminalButton>
                           )}
                           {v.analyzed && (
-                            <span className="text-xs text-[var(--fg)] font-mono badge-ok px-1">
-                              [AI]
-                            </span>
+                            <span className="text-xs text-[var(--fg)] font-mono badge-ok px-1">[AI]</span>
                           )}
                           <button
                             onClick={() => handleDeleteVideo(v.id, selected.id)}

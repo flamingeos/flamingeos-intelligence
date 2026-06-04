@@ -133,6 +133,38 @@ export async function scanYouTubeTrending(regionCode = "US") {
   return reports;
 }
 
+export async function updateTrend(
+  id: string,
+  data: { topic?: string; summary?: string; researchReport?: string }
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.trendReport.updateMany({ where: { id, userId: session.user.id }, data });
+  revalidatePath("/trends");
+}
+
+export async function createManualTrend(topic: string, notes?: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.trendReport.create({
+    data: {
+      userId: session.user.id,
+      topic,
+      source: "manual",
+      summary: notes ?? null,
+      status: "analyzed",
+      viralAngles: [],
+      relatedTopics: [],
+      contrarianAngles: [],
+    },
+  });
+
+  revalidatePath("/trends");
+  return report;
+}
+
 export async function deleteTrend(id: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
