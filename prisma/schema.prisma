@@ -32,6 +32,7 @@ model User {
   titleReports  TitleReport[]
   thumbnailReports ThumbnailReport[]
   contentCalendar  ContentCalendar[]
+  ideas            Idea[]
 }
 
 model Account {
@@ -466,6 +467,28 @@ model AgentRun {
 // ============================================================
 // KNOWLEDGE BASE (semantic search)
 // ============================================================
+
+// ============================================================
+// IDEAS BOARD (manual brainstorm)
+// ============================================================
+
+model Idea {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  notes     String?  @db.Text
+  category  String   @default("other")
+  status    String   @default("idea")
+  priority  Int      @default(2)
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@index([userId, status])
+}
 
 model KnowledgeBase {
   id             String   @id @default(cuid())
