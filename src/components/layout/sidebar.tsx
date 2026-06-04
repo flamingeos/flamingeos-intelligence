@@ -16,6 +16,7 @@ import {
   BookOpen,
   Bell,
   LogOut,
+  Lightbulb,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -28,6 +29,7 @@ const NAV = [
   { href: "/titles", icon: Type, label: "Titles", key: "titles" },
   { href: "/thumbnails", icon: Image, label: "Thumbnails", key: "thumbnails" },
   { href: "/calendar", icon: Calendar, label: "Calendar", key: "calendar" },
+  { href: "/ideas", icon: Lightbulb, label: "Ideas Board", key: "ideas" },
   { href: "/agents", icon: Bot, label: "AI Agents", key: "agents" },
   { href: "/knowledge", icon: BookOpen, label: "Knowledge", key: "knowledge" },
 ];
