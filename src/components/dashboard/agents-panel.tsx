@@ -6,7 +6,7 @@ import { TerminalCard } from "@/components/ui/terminal-card";
 import { TerminalButton } from "@/components/ui/terminal-button";
 import { relativeTime, getStatusIcon, formatNumber } from "@/lib/utils";
 import { runDailyAgent, runWeeklyAgent, runMonthlyAgent } from "@/server/actions/agents";
-import { Bot, Play, Zap, Calendar } from "lucide-react";
+import { Play } from "lucide-react";
 
 const AGENTS = [
   {
@@ -32,8 +32,267 @@ const AGENTS = [
   },
 ];
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-3">
+      <div className="text-[var(--fg-muted)] uppercase tracking-widest text-[10px] mb-1">
+        // {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Bullets({ items }: { items: unknown[] }) {
+  if (!items.length) return null;
+  return (
+    <ul className="space-y-0.5">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
+          <span className="text-[var(--fg-muted)] shrink-0">&gt;</span>
+          <span className="text-[var(--fg)]">{typeof item === "object" ? JSON.stringify(item) : String(item)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DailyOutput({ out }: { out: Record<string, unknown> }) {
+  const details = (out.competitorDetails ?? []) as Array<{ competitor: string; video: string; opportunity?: string }>;
+  return (
+    <>
+      <div className="flex flex-wrap gap-4 text-xs font-mono">
+        <span>
+          <span className="text-[var(--fg-muted)]">channel synced: </span>
+          <span className={out.channelSynced ? "text-[var(--fg)]" : "text-[var(--error)]"}>
+            {out.channelSynced ? "[OK]" : "—"}
+          </span>
+        </span>
+        <span>
+          <span className="text-[var(--fg-muted)]">competitor videos: </span>
+          <span className="text-[var(--fg)]">{String(out.newCompetitorVideos ?? 0)}</span>
+        </span>
+        <span>
+          <span className="text-[var(--fg-muted)]">trends identified: </span>
+          <span className="text-[var(--fg)]">{String(out.trendsIdentified ?? 0)}</span>
+        </span>
+      </div>
+
+      {out.trendsError && (
+        <div className="mt-2 text-[var(--error)] text-xs font-mono">
+          [WARN] trending step failed: {String(out.trendsError)}
+        </div>
+      )}
+
+      {details.length > 0 && (
+        <Section label="new competitor videos">
+          <div className="space-y-2">
+            {details.map((v, i) => (
+              <div key={i} className="border-l-2 border-[var(--border)] pl-3">
+                <div className="text-[var(--fg)] font-mono text-xs">{v.video}</div>
+                <div className="text-[var(--fg-muted)] text-[10px]">by {v.competitor}</div>
+                {v.opportunity && (
+                  <div className="text-[var(--amber)] text-[10px] mt-0.5">{v.opportunity}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </>
+  );
+}
+
+function WeeklyOutput({ out }: { out: Record<string, unknown> }) {
+  const priorityTopics = (out.priorityTopics ?? []) as Array<{ topic: string; suggestedTitle?: string; reason?: string }>;
+  const opportunities = (out.keyOpportunities ?? []) as string[];
+  const avoid = (out.avoidTopics ?? []) as string[];
+  const schedule = (out.contentSchedule ?? []) as Array<{ day: string; topic: string; format?: string }>;
+
+  return (
+    <>
+      {out.weeklyTheme && (
+        <div className="text-xs font-mono">
+          <span className="text-[var(--fg-muted)]">theme: </span>
+          <span className="text-[var(--fg)] font-bold">{String(out.weeklyTheme)}</span>
+        </div>
+      )}
+      {out.growthFocus && (
+        <div className="text-xs font-mono mt-1">
+          <span className="text-[var(--fg-muted)]">growth focus: </span>
+          <span className="text-[var(--fg)]">{String(out.growthFocus)}</span>
+        </div>
+      )}
+      {out.summary && (
+        <Section label="summary">
+          <p className="text-xs font-mono text-[var(--fg)] whitespace-pre-wrap leading-relaxed">
+            {String(out.summary)}
+          </p>
+        </Section>
+      )}
+      {priorityTopics.length > 0 && (
+        <Section label="priority topics">
+          <div className="space-y-2">
+            {priorityTopics.map((t, i) => (
+              <div key={i} className="border-l-2 border-[var(--border)] pl-3">
+                <div className="text-[var(--fg)] text-xs font-mono">{t.topic}</div>
+                {t.suggestedTitle && (
+                  <div className="text-[var(--amber)] text-[10px]">"{t.suggestedTitle}"</div>
+                )}
+                {t.reason && (
+                  <div className="text-[var(--fg-muted)] text-[10px]">{t.reason}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {schedule.length > 0 && (
+        <Section label="content schedule">
+          <div className="grid grid-cols-1 gap-1">
+            {schedule.map((s, i) => (
+              <div key={i} className="flex gap-3 text-xs font-mono">
+                <span className="text-[var(--fg-muted)] w-20 shrink-0">{s.day}</span>
+                <span className="text-[var(--fg)]">{s.topic}</span>
+                {s.format && <span className="text-[var(--fg-dim)]">[{s.format}]</span>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {opportunities.length > 0 && (
+        <Section label="key opportunities">
+          <Bullets items={opportunities} />
+        </Section>
+      )}
+      {avoid.length > 0 && (
+        <Section label="avoid this week">
+          <Bullets items={avoid} />
+        </Section>
+      )}
+    </>
+  );
+}
+
+function MonthlyOutput({ out }: { out: Record<string, unknown> }) {
+  const insights = (out.topInsights ?? []) as string[];
+  const opportunities = (out.growthOpportunities ?? []) as string[];
+  const kpis = (out.kpisToTrack ?? []) as string[];
+  const strategy = (out.contentStrategy30Days ?? []) as Array<{ week: string; theme: string; priority?: string }>;
+  const metrics = out.keyMetrics as Record<string, unknown> | undefined;
+
+  return (
+    <>
+      {metrics && (
+        <div className="flex flex-wrap gap-4 text-xs font-mono">
+          {Object.entries(metrics).map(([k, v]) => (
+            <span key={k}>
+              <span className="text-[var(--fg-muted)]">{k.replace(/([A-Z])/g, " $1").toLowerCase()}: </span>
+              <span className="text-[var(--fg)] font-bold">{String(v)}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {out.executiveSummary && (
+        <Section label="executive summary">
+          <p className="text-xs font-mono text-[var(--fg)] whitespace-pre-wrap leading-relaxed">
+            {String(out.executiveSummary)}
+          </p>
+        </Section>
+      )}
+      {insights.length > 0 && (
+        <Section label="top insights">
+          <Bullets items={insights} />
+        </Section>
+      )}
+      {opportunities.length > 0 && (
+        <Section label="growth opportunities">
+          <Bullets items={opportunities} />
+        </Section>
+      )}
+      {strategy.length > 0 && (
+        <Section label="30-day content strategy">
+          <div className="space-y-1">
+            {strategy.map((s, i) => (
+              <div key={i} className="flex gap-3 text-xs font-mono border-l-2 border-[var(--border)] pl-3">
+                <span className="text-[var(--fg-muted)] w-16 shrink-0">{s.week}</span>
+                <span className="text-[var(--fg)]">{s.theme}</span>
+                {s.priority && <span className="text-[var(--amber)] text-[10px] self-center">[{s.priority}]</span>}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+      {out.competitorInsights && (
+        <Section label="competitor insights">
+          <p className="text-xs font-mono text-[var(--fg)] whitespace-pre-wrap">{String(out.competitorInsights)}</p>
+        </Section>
+      )}
+      {out.trendForecast && (
+        <Section label="trend forecast">
+          <p className="text-xs font-mono text-[var(--amber)] whitespace-pre-wrap">{String(out.trendForecast)}</p>
+        </Section>
+      )}
+      {kpis.length > 0 && (
+        <Section label="kpis to track">
+          <Bullets items={kpis} />
+        </Section>
+      )}
+    </>
+  );
+}
+
+function RunOutputPanel({ run }: { run: AgentRun }) {
+  if (run.status === "failed") {
+    return (
+      <div className="space-y-2">
+        <div className="text-[var(--error)] text-xs font-mono border border-[var(--error)] p-3 whitespace-pre-wrap max-h-64 overflow-y-auto">
+          [ERR] {run.error ?? "Unknown error — check server logs"}
+        </div>
+        {run.outputs && (
+          <details className="text-xs font-mono">
+            <summary className="text-[var(--fg-muted)] cursor-pointer hover:text-[var(--fg)]">
+              // partial output (if any)
+            </summary>
+            <pre className="text-[var(--fg-dim)] border border-[var(--border)] p-3 max-h-48 overflow-y-auto mt-1 whitespace-pre-wrap">
+              {JSON.stringify(run.outputs, null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  if (!run.outputs) {
+    return (
+      <div className="text-[var(--fg-muted)] text-xs font-mono">
+        // no output captured
+      </div>
+    );
+  }
+
+  const out = run.outputs as Record<string, unknown>;
+
+  return (
+    <div className="space-y-1">
+      {run.agentType === "daily" && <DailyOutput out={out} />}
+      {run.agentType === "weekly" && <WeeklyOutput out={out} />}
+      {run.agentType === "monthly" && <MonthlyOutput out={out} />}
+      {!["daily", "weekly", "monthly"].includes(run.agentType) && (
+        <pre className="text-xs font-mono text-[var(--fg)] border border-[var(--border)] p-3 max-h-96 overflow-y-auto whitespace-pre-wrap">
+          {JSON.stringify(out, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ── main component ────────────────────────────────────────────────────────────
+
 export function AgentsPanel({ runs: initialRuns }: { runs: AgentRun[] }) {
-  const [runs, setRuns] = useState(initialRuns);
+  const [runs] = useState(initialRuns);
   const [message, setMessage] = useState("");
   const [runningAgent, setRunningAgent] = useState<string | null>(null);
   const [selected, setSelected] = useState<AgentRun | null>(null);
@@ -48,11 +307,11 @@ export function AgentsPanel({ runs: initialRuns }: { runs: AgentRun[] }) {
         if (agentKey === "weekly") await runWeeklyAgent();
         if (agentKey === "monthly") await runMonthlyAgent();
         setMessage(`[OK] ${agentKey} agent completed`);
-        window.location.reload();
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "agent failed"}`);
       } finally {
         setRunningAgent(null);
+        window.location.reload();
       }
     });
   }
@@ -181,11 +440,17 @@ export function AgentsPanel({ runs: initialRuns }: { runs: AgentRun[] }) {
                     {getStatusIcon(run.status)}
                   </span>
                   <span className="text-[var(--fg)] uppercase">{run.agentType}</span>
+                  {run.error && (
+                    <span className="text-[var(--error)] truncate max-w-48">
+                      {run.error.slice(0, 50)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 text-[var(--fg-muted)]">
                   {run.durationMs && <span>{(run.durationMs / 1000).toFixed(1)}s</span>}
                   {run.tokensUsed && <span>{formatNumber(run.tokensUsed)} tkns</span>}
                   <span>{relativeTime(run.startedAt)}</span>
+                  <span className="text-[10px] opacity-50">{selected?.id === run.id ? "▲" : "▼"}</span>
                 </div>
               </div>
             ))
@@ -195,19 +460,27 @@ export function AgentsPanel({ runs: initialRuns }: { runs: AgentRun[] }) {
         {/* Selected run detail */}
         {selected && (
           <div className="mt-4 border-t border-[var(--border)] pt-4">
-            <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest mb-2">
-              // run detail
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest">
+                // run detail — {selected.agentType}
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-mono text-[var(--fg-muted)]">
+                <span className={
+                  selected.status === "completed" ? "text-[var(--fg)]" :
+                  selected.status === "failed" ? "text-[var(--error)]" :
+                  "text-[var(--amber)]"
+                }>
+                  [{selected.status.toUpperCase()}]
+                </span>
+                {selected.durationMs && <span>{(selected.durationMs / 1000).toFixed(1)}s</span>}
+                {selected.tokensUsed && <span>{formatNumber(selected.tokensUsed)} tokens</span>}
+                {selected.confidenceScore && <span>confidence: {selected.confidenceScore}/10</span>}
+              </div>
             </div>
-            {selected.reasoning && (
-              <div className="text-xs font-mono text-[var(--fg)] whitespace-pre-wrap border border-[var(--border)] p-3 max-h-48 overflow-y-auto">
-                {selected.reasoning}
-              </div>
-            )}
-            {selected.outputs && (
-              <div className="text-xs font-mono text-[var(--fg-dim)] whitespace-pre-wrap border border-[var(--border)] p-3 max-h-48 overflow-y-auto mt-2">
-                {JSON.stringify(selected.outputs, null, 2)}
-              </div>
-            )}
+
+            <div className="border border-[var(--border)] p-3 max-h-[600px] overflow-y-auto">
+              <RunOutputPanel run={selected} />
+            </div>
           </div>
         )}
       </TerminalCard>

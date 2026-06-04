@@ -122,67 +122,73 @@ export async function runDailyAgent(userId: string) {
     outputs.competitorDetails = newCompetitorVideos;
 
     // 3. Scan YouTube trending and identify opportunities
-    const trending = await getTrendingVideos("US", 20).catch(() => []);
-    const trendingTitles = trending.slice(0, 10).map((v) => v.title).join("\n");
+    try {
+      const trending = await getTrendingVideos("US", 20).catch(() => []);
+      const trendingTitles = trending.slice(0, 10).map((v) => v.title).join("\n");
 
-    if (trendingTitles) {
-      const { content: trendContent, tokensUsed } = await generateWithClaude(
-        `You are a trend analyst for @flamingeos YouTube channel. Identify relevant opportunities. Return JSON only.`,
-        `Today's trending YouTube videos:\n${trendingTitles}\n\nIdentify the top 3 trending topics relevant to tech/AI/software/growth content.\nReturn: {"trends":[{"topic":"...","why":"...","angle":"...","score":0-10}]}`,
-        { maxTokens: 800, model: "claude-sonnet-4-6" }
-      );
-      totalTokens += tokensUsed;
+      if (trendingTitles) {
+        const { content: trendContent, tokensUsed } = await generateWithClaude(
+          `You are a trend analyst for @flamingeos YouTube channel. Identify relevant opportunities. Return JSON only.`,
+          `Today's trending YouTube videos:\n${trendingTitles}\n\nIdentify the top 3 trending topics relevant to tech/AI/software/growth content.\nReturn: {"trends":[{"topic":"...","why":"...","angle":"...","score":0-10}]}`,
+          { maxTokens: 800, model: "claude-sonnet-4-6" }
+        );
+        totalTokens += tokensUsed;
 
-      try {
-        const jsonMatch = trendContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const { trends } = JSON.parse(jsonMatch[0]) as {
-            trends: { topic: string; why: string; angle: string; score: number }[];
-          };
+        try {
+          const jsonMatch = trendContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const { trends } = JSON.parse(jsonMatch[0]) as {
+              trends: { topic: string; why: string; angle: string; score: number }[];
+            };
 
-          for (const trend of trends) {
-            await db.trendReport.create({
-              data: {
-                userId,
-                topic: trend.topic,
-                source: "youtube_trending",
-                summary: trend.why,
-                viralAngles: [trend.angle],
-                velocityScore: trend.score,
-                opportunityScore: trend.score,
-                overallScore: trend.score,
-                status: "analyzed",
-                aiModel: "claude-sonnet-4-6",
-                tokensUsed,
-              },
-            });
+            for (const trend of trends) {
+              await db.trendReport.create({
+                data: {
+                  userId,
+                  topic: trend.topic,
+                  source: "youtube_trending",
+                  summary: trend.why,
+                  viralAngles: [trend.angle],
+                  velocityScore: trend.score,
+                  opportunityScore: trend.score,
+                  overallScore: trend.score,
+                  status: "analyzed",
+                  aiModel: "claude-sonnet-4-6",
+                  tokensUsed,
+                },
+              });
 
-            // Alert for high-score trends
-            if (trend.score >= 8 && user?.email) {
-              await sendTrendAlert(
-                user.email,
-                trend.topic,
-                trend.score,
-                trend.why
-              ).catch(() => {});
+              if (trend.score >= 8 && user?.email) {
+                await sendTrendAlert(
+                  user.email,
+                  trend.topic,
+                  trend.score,
+                  trend.why
+                ).catch(() => {});
+              }
             }
-          }
 
-          outputs.trendsIdentified = trends.length;
-        }
-      } catch {}
+            outputs.trendsIdentified = trends.length;
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.error("Trending analysis failed (non-fatal):", e);
+      outputs.trendsError = e instanceof Error ? e.message : String(e);
     }
 
     // 4. Generate daily insight notification
-    await db.notification.create({
-      data: {
-        userId,
-        type: "daily_report",
-        title: "Daily Intelligence Report",
-        body: `Agent completed: ${newCompetitorVideos.length} new competitor videos detected, trends analyzed.`,
-        data: JSON.parse(JSON.stringify(outputs)),
-      },
-    });
+    try {
+      await db.notification.create({
+        data: {
+          userId,
+          type: "daily_report",
+          title: "Daily Intelligence Report",
+          body: `Agent completed: ${newCompetitorVideos.length} new competitor videos detected, trends analyzed.`,
+          data: JSON.parse(JSON.stringify(outputs)),
+        },
+      });
+    } catch {}
 
     await db.agentRun.update({
       where: { id: run.id },

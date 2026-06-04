@@ -88,17 +88,21 @@ Generate a weekly content strategy with:
     } catch {}
 
     // Store as knowledge base entry
-    await db.knowledgeBase.create({
-      data: {
-        userId,
-        type: "strategy",
-        title: `Weekly Strategy: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-        content: JSON.stringify(strategy, null, 2),
-        tags: ["weekly", "strategy"],
-        sourceType: "weekly_agent",
-        confidenceScore: (strategy.confidenceScore as number) ?? 8,
-      },
-    });
+    try {
+      await db.knowledgeBase.create({
+        data: {
+          userId,
+          type: "strategy",
+          title: `Weekly Strategy: ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          content: JSON.stringify(strategy, null, 2),
+          tags: ["weekly", "strategy"],
+          sourceType: "weekly_agent",
+          confidenceScore: (strategy.confidenceScore as number) ?? 8,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to save weekly strategy to knowledge base:", e);
+    }
 
     // Create content calendar entries
     if (Array.isArray(strategy.contentSchedule)) {
@@ -109,34 +113,38 @@ Generate a weekly content strategy with:
       };
 
       for (const entry of strategy.contentSchedule as { day: string; type: string; topic: string; format: string }[]) {
-        const dayOffset = ((dayMap[entry.day] ?? 1) - baseDate.getDay() + 7) % 7 || 7;
-        const scheduledDate = new Date(baseDate);
-        scheduledDate.setDate(baseDate.getDate() + dayOffset);
-        scheduledDate.setHours(10, 0, 0, 0);
+        try {
+          const dayOffset = ((dayMap[entry.day] ?? 1) - baseDate.getDay() + 7) % 7 || 7;
+          const scheduledDate = new Date(baseDate);
+          scheduledDate.setDate(baseDate.getDate() + dayOffset);
+          scheduledDate.setHours(10, 0, 0, 0);
 
-        await db.contentCalendar.create({
-          data: {
-            userId,
-            scheduledDate,
-            title: entry.topic,
-            topic: entry.type,
-            scriptType: entry.format,
-            status: "planned",
-            priority: 2,
-          },
-        });
+          await db.contentCalendar.create({
+            data: {
+              userId,
+              scheduledDate,
+              title: entry.topic,
+              topic: entry.type,
+              scriptType: entry.format,
+              status: "planned",
+              priority: 2,
+            },
+          });
+        } catch {}
       }
     }
 
-    await db.notification.create({
-      data: {
-        userId,
-        type: "weekly_strategy",
-        title: "Weekly Content Strategy Ready",
-        body: (strategy.summary as string) ?? "Weekly strategy generated.",
-        data: JSON.parse(JSON.stringify(strategy)),
-      },
-    });
+    try {
+      await db.notification.create({
+        data: {
+          userId,
+          type: "weekly_strategy",
+          title: "Weekly Content Strategy Ready",
+          body: (strategy.summary as string) ?? "Weekly strategy generated.",
+          data: JSON.parse(JSON.stringify(strategy)),
+        },
+      });
+    } catch {}
 
     await db.agentRun.update({
       where: { id: run.id },

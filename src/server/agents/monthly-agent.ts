@@ -103,27 +103,33 @@ Generate comprehensive monthly report with:
       if (jsonMatch) report = JSON.parse(jsonMatch[0]);
     } catch {}
 
-    await db.knowledgeBase.create({
-      data: {
-        userId,
-        type: "strategy",
-        title: `Monthly Growth Report: ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`,
-        content: JSON.stringify(report, null, 2),
-        tags: ["monthly", "growth", "report"],
-        sourceType: "monthly_agent",
-        confidenceScore: (report.confidenceScore as number) ?? 8,
-      },
-    });
+    try {
+      await db.knowledgeBase.create({
+        data: {
+          userId,
+          type: "strategy",
+          title: `Monthly Growth Report: ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`,
+          content: JSON.stringify(report, null, 2),
+          tags: ["monthly", "growth", "report"],
+          sourceType: "monthly_agent",
+          confidenceScore: (report.confidenceScore as number) ?? 8,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to save monthly report to knowledge base:", e);
+    }
 
-    await db.notification.create({
-      data: {
-        userId,
-        type: "monthly_report",
-        title: "Monthly Growth Report Ready",
-        body: (report.executiveSummary as string)?.slice(0, 200) ?? "Monthly report generated.",
-        data: JSON.parse(JSON.stringify(report)),
-      },
-    });
+    try {
+      await db.notification.create({
+        data: {
+          userId,
+          type: "monthly_report",
+          title: "Monthly Growth Report Ready",
+          body: (report.executiveSummary as string)?.slice(0, 200) ?? "Monthly report generated.",
+          data: JSON.parse(JSON.stringify(report)),
+        },
+      });
+    } catch {}
 
     await db.agentRun.update({
       where: { id: run.id },
