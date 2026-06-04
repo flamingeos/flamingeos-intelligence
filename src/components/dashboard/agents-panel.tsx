@@ -19,7 +19,7 @@ const AGENTS = [
   {
     key: "weekly",
     label: "Weekly Strategy Agent",
-    description: "Generates content strategy, populates calendar, analyzes weekly performance",
+    description: "Analyzes competitor channels and generates 3–5 high-quality long-form video concepts",
     schedule: "07:00 UTC every Monday",
     icon: "W",
   },
@@ -106,70 +106,90 @@ function DailyOutput({ out }: { out: Record<string, unknown> }) {
 }
 
 function WeeklyOutput({ out }: { out: Record<string, unknown> }) {
-  const priorityTopics = (out.priorityTopics ?? []) as Array<{ topic: string; suggestedTitle?: string; reason?: string }>;
-  const opportunities = (out.keyOpportunities ?? []) as string[];
-  const avoid = (out.avoidTopics ?? []) as string[];
-  const schedule = (out.contentSchedule ?? []) as Array<{ day: string; topic: string; format?: string }>;
+  const concepts = (out.videoConcepts ?? []) as Array<{
+    title: string;
+    inspiredBy?: string;
+    whyItPerforms?: string;
+    openingHook?: string;
+    thumbnailConcept?: string;
+    improvementOverCompetitor?: string;
+    performancePotential?: string;
+  }>;
+  const gaps = (out.contentGapsFound ?? []) as string[];
+  const titlePatterns = (out.titlePatternsWorking ?? []) as string[];
 
   return (
     <>
-      {out.weeklyTheme && (
-        <div className="text-xs font-mono">
-          <span className="text-[var(--fg-muted)]">theme: </span>
-          <span className="text-[var(--fg)] font-bold">{String(out.weeklyTheme)}</span>
+      {out.weeklyFocus && (
+        <div className="text-xs font-mono mb-1">
+          <span className="text-[var(--fg-muted)]">this week: </span>
+          <span className="text-[var(--fg)] font-bold">{String(out.weeklyFocus)}</span>
         </div>
       )}
-      {out.growthFocus && (
-        <div className="text-xs font-mono mt-1">
-          <span className="text-[var(--fg-muted)]">growth focus: </span>
-          <span className="text-[var(--fg)]">{String(out.growthFocus)}</span>
-        </div>
-      )}
-      {out.summary && (
-        <Section label="summary">
-          <p className="text-xs font-mono text-[var(--fg)] whitespace-pre-wrap leading-relaxed">
-            {String(out.summary)}
-          </p>
-        </Section>
-      )}
-      {priorityTopics.length > 0 && (
-        <Section label="priority topics">
-          <div className="space-y-2">
-            {priorityTopics.map((t, i) => (
-              <div key={i} className="border-l-2 border-[var(--border)] pl-3">
-                <div className="text-[var(--fg)] text-xs font-mono">{t.topic}</div>
-                {t.suggestedTitle && (
-                  <div className="text-[var(--amber)] text-[10px]">"{t.suggestedTitle}"</div>
+
+      {concepts.length > 0 && (
+        <Section label={`video concepts (${concepts.length})`}>
+          <div className="space-y-4">
+            {concepts.map((c, i) => (
+              <div key={i} className="border border-[var(--border)] p-3 space-y-2">
+                <div className="text-[var(--fg)] text-xs font-mono font-bold leading-tight">
+                  [{i + 1}] {c.title}
+                </div>
+                {c.performancePotential && (
+                  <div className={`text-[10px] font-mono uppercase tracking-widest ${
+                    c.performancePotential.toLowerCase().includes("high")
+                      ? "text-[var(--fg)]"
+                      : c.performancePotential.toLowerCase().includes("medium")
+                      ? "text-[var(--amber)]"
+                      : "text-[var(--fg-muted)]"
+                  }`}>
+                    potential: {c.performancePotential}
+                  </div>
                 )}
-                {t.reason && (
-                  <div className="text-[var(--fg-muted)] text-[10px]">{t.reason}</div>
+                {c.inspiredBy && (
+                  <div className="text-[10px] font-mono text-[var(--fg-muted)]">
+                    inspired by: {c.inspiredBy}
+                  </div>
+                )}
+                {c.whyItPerforms && (
+                  <div>
+                    <div className="text-[10px] text-[var(--fg-muted)] uppercase tracking-widest mb-0.5">why it performs</div>
+                    <div className="text-xs font-mono text-[var(--fg)] leading-relaxed">{c.whyItPerforms}</div>
+                  </div>
+                )}
+                {c.openingHook && (
+                  <div>
+                    <div className="text-[10px] text-[var(--fg-muted)] uppercase tracking-widest mb-0.5">opening hook</div>
+                    <div className="text-xs font-mono text-[var(--amber)] leading-relaxed italic">"{c.openingHook}"</div>
+                  </div>
+                )}
+                {c.thumbnailConcept && (
+                  <div>
+                    <div className="text-[10px] text-[var(--fg-muted)] uppercase tracking-widest mb-0.5">thumbnail</div>
+                    <div className="text-xs font-mono text-[var(--fg)] leading-relaxed">{c.thumbnailConcept}</div>
+                  </div>
+                )}
+                {c.improvementOverCompetitor && (
+                  <div>
+                    <div className="text-[10px] text-[var(--fg-muted)] uppercase tracking-widest mb-0.5">improvement over competitor</div>
+                    <div className="text-xs font-mono text-[var(--fg)] leading-relaxed">{c.improvementOverCompetitor}</div>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         </Section>
       )}
-      {schedule.length > 0 && (
-        <Section label="content schedule">
-          <div className="grid grid-cols-1 gap-1">
-            {schedule.map((s, i) => (
-              <div key={i} className="flex gap-3 text-xs font-mono">
-                <span className="text-[var(--fg-muted)] w-20 shrink-0">{s.day}</span>
-                <span className="text-[var(--fg)]">{s.topic}</span>
-                {s.format && <span className="text-[var(--fg-dim)]">[{s.format}]</span>}
-              </div>
-            ))}
-          </div>
+
+      {titlePatterns.length > 0 && (
+        <Section label="title patterns working in this space">
+          <Bullets items={titlePatterns} />
         </Section>
       )}
-      {opportunities.length > 0 && (
-        <Section label="key opportunities">
-          <Bullets items={opportunities} />
-        </Section>
-      )}
-      {avoid.length > 0 && (
-        <Section label="avoid this week">
-          <Bullets items={avoid} />
+
+      {gaps.length > 0 && (
+        <Section label="content gaps found">
+          <Bullets items={gaps} />
         </Section>
       )}
     </>
