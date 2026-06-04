@@ -16,7 +16,8 @@
       "Bash(ssh -T git@github.com)",
       "Bash(echo \"exit: $?\")",
       "Bash(git config *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(npm config *)"
     ]
   }
 }
