@@ -19,7 +19,8 @@
       "Bash(npx vercel *)",
       "Bash(npm config *)",
       "Bash(npx tsc *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }
