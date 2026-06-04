@@ -223,11 +223,15 @@ export async function getTopVideos(
   return response.data;
 }
 
-export async function getPublicChannelInfo(channelId: string) {
+export async function getPublicChannelInfo(channelIdOrHandle: string) {
+  const isHandle = channelIdOrHandle.startsWith("@");
+
   const response = await youtube.channels.list({
     key: process.env.YOUTUBE_API_KEY,
     part: ["snippet", "statistics", "contentDetails"],
-    id: [channelId],
+    ...(isHandle
+      ? { forHandle: channelIdOrHandle.slice(1) }
+      : { id: [channelIdOrHandle] }),
   });
 
   const channel = response.data.items?.[0];

@@ -12,21 +12,31 @@ export async function addCompetitor(channelIdOrHandle: string) {
 
   const userId = session.user.id;
 
-  // Look up channel by ID
-  const info = await getPublicChannelInfo(channelIdOrHandle);
-  if (!info) throw new Error("Channel not found on YouTube.");
+  // Normalise: strip @, extract channel ID from a YouTube URL, or use as-is
+  let lookup = channelIdOrHandle.trim();
+  const urlMatch = lookup.match(/youtube\.com\/(?:channel\/|@)([\w-]+)/);
+  if (urlMatch) lookup = urlMatch[1];
+
+  let info = await getPublicChannelInfo(lookup);
+
+  // If not found by ID, try as a handle (UCxxx IDs start with UC; anything else is a handle)
+  if (!info && !lookup.startsWith("UC")) {
+    info = await getPublicChannelInfo("@" + lookup.replace(/^@/, ""));
+  }
+
+  if (!info) throw new Error("Channel not found. Make sure you enter a valid channel ID (UCxxxxxx) or handle (@name).");
 
   const existing = await db.competitor.findFirst({
     where: { userId, channelId: info.channelId },
   });
   if (existing) throw new Error("Competitor already added.");
 
-  const competitor = await db.competitor.create({
+  await db.competitor.create({
     data: { userId, ...info },
   });
 
   revalidatePath("/competitors");
-  return competitor;
+  return { ok: true };
 }
 
 export async function removeCompetitor(competitorId: string) {
@@ -124,7 +134,7 @@ export async function getCompetitors() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  return db.competitor.findMany({
+  const rows = await db.competitor.findMany({
     where: { userId: session.user.id, isActive: true },
     include: {
       videos: {
@@ -144,4 +154,16 @@ export async function getCompetitors() {
     },
     orderBy: { subscriberCount: "desc" },
   });
+
+  // Prisma returns BigInt for subscriber/view counts; convert to Number for
+  // JSON serialization when passing from Server Component to Client Component.
+  return rows.map((c) => ({
+    ...c,
+    subscriberCount: Number(c.subscriberCount),
+    viewCount: Number(c.viewCount),
+    videos: c.videos.map((v) => ({
+      ...v,
+      viewCount: Number(v.viewCount),
+    })),
+  }));
 }

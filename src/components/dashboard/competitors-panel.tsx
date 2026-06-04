@@ -18,8 +18,8 @@ type CompetitorWithVideos = {
   channelId: string;
   title: string;
   handle: string | null;
-  subscriberCount: bigint;
-  viewCount: bigint;
+  subscriberCount: number;
+  viewCount: number;
   videoCount: number;
   lastChecked: Date | null;
   videos: {
@@ -27,7 +27,7 @@ type CompetitorWithVideos = {
     videoId: string;
     title: string;
     publishedAt: Date;
-    viewCount: bigint;
+    viewCount: number;
     viewVelocity: number | null;
     analyzed: boolean;
   }[];
