@@ -232,67 +232,85 @@ export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[
 
       <div className="text-[var(--fg-muted)] text-xs font-mono">{"=".repeat(80)}</div>
 
-      <TerminalCard title="Generate Titles" titlePrefix=">">
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <TerminalInput
-              prompt="topic>"
-              placeholder="video topic..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-            />
+      {/* ── Mode tabs ── */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowNewSession(false)}
+          className={`text-xs font-mono px-3 py-1.5 border transition-all ${
+            !showNewSession
+              ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+              : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+          }`}
+        >
+          Generate with AI
+        </button>
+        <button
+          onClick={() => setShowNewSession(true)}
+          className={`text-xs font-mono px-3 py-1.5 border transition-all ${
+            showNewSession
+              ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+              : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+          }`}
+        >
+          Add Titles Manually
+        </button>
+      </div>
+
+      {!showNewSession ? (
+        <TerminalCard title="Generate Titles — AI" titlePrefix=">">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <TerminalInput
+                prompt="topic>"
+                placeholder="video topic..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+              />
+            </div>
+            <TerminalButton variant="primary" loading={isPending} onClick={handleGenerate}>
+              Generate 20 Titles
+            </TerminalButton>
           </div>
-          <TerminalButton variant="primary" loading={isPending} onClick={handleGenerate}>
-            Generate 20 Titles
-          </TerminalButton>
-        </div>
-        <div className="text-[var(--fg-muted)] text-xs font-mono mt-2">
-          // each title scored on: curiosity, emotion, clarity, searchability, ctr prediction
-        </div>
-      </TerminalCard>
+          <div className="text-[var(--fg-muted)] text-xs font-mono mt-2">
+            // each title scored on: curiosity, emotion, clarity, searchability, ctr prediction
+          </div>
+        </TerminalCard>
+      ) : (
+        <TerminalCard title="Add Titles Manually" titlePrefix="+">
+          <div className="space-y-3">
+            <div className="text-[var(--fg-muted)] text-xs font-mono">
+              // create a session with a topic name, then add your own titles one by one
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <TerminalInput
+                  prompt="topic>"
+                  placeholder="what is this session about? e.g. 'AI tools for creators'"
+                  value={newSessionTopic}
+                  onChange={(e) => setNewSessionTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateManualSession()}
+                />
+              </div>
+              <TerminalButton variant="primary" loading={isPending} onClick={handleCreateManualSession}>
+                Create Session
+              </TerminalButton>
+            </div>
+            <div className="text-[var(--fg-muted)] text-xs font-mono">
+              // after creating, select the session and use "add title manually" at the bottom of the list
+            </div>
+          </div>
+        </TerminalCard>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* ── History sidebar ── */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest">
-              // history ({reports.length})
-            </div>
-            <button
-              onClick={() => setShowNewSession((v) => !v)}
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-              title="Create session manually"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
+          <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest mb-2">
+            // history ({reports.length})
           </div>
 
-          {/* Manual session form */}
-          {showNewSession && (
-            <div className="border border-[var(--fg-dim)] p-2 space-y-2">
-              <div className="text-[var(--fg-muted)] text-[10px] font-mono uppercase tracking-widest">
-                // new manual session
-              </div>
-              <TerminalInput
-                prompt="topic>"
-                placeholder="session topic..."
-                value={newSessionTopic}
-                onChange={(e) => setNewSessionTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateManualSession()}
-              />
-              <div className="flex gap-2">
-                <TerminalButton variant="primary" size="sm" loading={isPending} onClick={handleCreateManualSession}>
-                  Create
-                </TerminalButton>
-                <TerminalButton variant="secondary" size="sm" onClick={() => setShowNewSession(false)}>
-                  Cancel
-                </TerminalButton>
-              </div>
-            </div>
-          )}
-
-          {reports.length === 0 && !showNewSession && (
+          {reports.length === 0 && (
             <div className="text-[var(--fg-muted)] text-xs font-mono text-center py-8 border border-[var(--border)]">
               no titles generated yet
             </div>

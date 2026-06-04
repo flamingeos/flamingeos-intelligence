@@ -263,26 +263,105 @@ export function ScriptsPanel({ scripts: initialScripts }: { scripts: ScriptRepor
 
       <div className="text-[var(--fg-muted)] text-xs font-mono">{"=".repeat(80)}</div>
 
-      {/* Generator */}
-      <TerminalCard title="Generate Script" titlePrefix=">">
-        <div className="space-y-3">
-          <TerminalInput
-            prompt="topic>"
-            placeholder="video topic or concept..."
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-          />
-          <div className="flex gap-3 flex-wrap">
+      {/* ── Mode tabs ── */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowManual(false)}
+          className={`text-xs font-mono px-3 py-1.5 border transition-all ${
+            !showManual
+              ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+              : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+          }`}
+        >
+          Generate with AI
+        </button>
+        <button
+          onClick={() => setShowManual(true)}
+          className={`text-xs font-mono px-3 py-1.5 border transition-all ${
+            showManual
+              ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+              : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+          }`}
+        >
+          Write Script Manually
+        </button>
+      </div>
+
+      {!showManual ? (
+        <TerminalCard title="Generate Script — AI" titlePrefix=">">
+          <div className="space-y-3">
+            <TerminalInput
+              prompt="topic>"
+              placeholder="video topic or concept..."
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+            />
+            <div className="flex gap-3 flex-wrap">
+              <div>
+                <div className="text-[var(--fg-muted)] text-xs font-mono mb-1">// type</div>
+                <div className="flex gap-1 flex-wrap">
+                  {SCRIPT_TYPES.map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setScriptType(t.value)}
+                      className={`text-xs font-mono px-2 py-1 border transition-all ${
+                        scriptType === t.value
+                          ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+                          : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[var(--fg-muted)] text-xs font-mono mb-1">// duration (min)</div>
+                <div className="flex gap-1">
+                  {DURATIONS.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDuration(d)}
+                      className={`text-xs font-mono px-2 py-1 border transition-all ${
+                        duration === d
+                          ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
+                          : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+                      }`}
+                    >
+                      {d}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <TerminalButton variant="primary" loading={isPending} onClick={handleGenerate}>
+              Generate Full Script
+            </TerminalButton>
+          </div>
+        </TerminalCard>
+      ) : (
+        <TerminalCard title="Write Script Manually" titlePrefix="+">
+          <div className="space-y-3">
+            <div className="text-[var(--fg-muted)] text-xs font-mono">
+              // create a blank script entry — write the hook and full script yourself in the editor
+            </div>
+            <TerminalInput
+              prompt="title>"
+              placeholder="script title or video concept..."
+              value={manualTitle}
+              onChange={(e) => setManualTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateManual()}
+            />
             <div>
               <div className="text-[var(--fg-muted)] text-xs font-mono mb-1">// type</div>
               <div className="flex gap-1 flex-wrap">
                 {SCRIPT_TYPES.map((t) => (
                   <button
                     key={t.value}
-                    onClick={() => setScriptType(t.value)}
+                    onClick={() => setManualType(t.value)}
                     className={`text-xs font-mono px-2 py-1 border transition-all ${
-                      scriptType === t.value
+                      manualType === t.value
                         ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
                         : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
                     }`}
@@ -292,87 +371,21 @@ export function ScriptsPanel({ scripts: initialScripts }: { scripts: ScriptRepor
                 ))}
               </div>
             </div>
-            <div>
-              <div className="text-[var(--fg-muted)] text-xs font-mono mb-1">// duration (min)</div>
-              <div className="flex gap-1">
-                {DURATIONS.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDuration(d)}
-                    className={`text-xs font-mono px-2 py-1 border transition-all ${
-                      duration === d
-                        ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
-                        : "border-[var(--border)] text-[var(--fg-muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
-                    }`}
-                  >
-                    {d}m
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TerminalButton variant="primary" loading={isPending} onClick={handleCreateManual}>
+              Create Blank Script
+            </TerminalButton>
           </div>
-          <TerminalButton variant="primary" loading={isPending} onClick={handleGenerate}>
-            Generate Full Script
-          </TerminalButton>
-        </div>
-      </TerminalCard>
+        </TerminalCard>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* ── Script list sidebar ── */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest">
-              // saved scripts ({scripts.length})
-            </div>
-            <button
-              onClick={() => setShowManual((v) => !v)}
-              className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-              title="Create script manually"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
+          <div className="text-[var(--fg-muted)] text-xs font-mono uppercase tracking-widest mb-2">
+            // saved scripts ({scripts.length})
           </div>
 
-          {/* Manual create form */}
-          {showManual && (
-            <div className="border border-[var(--fg-dim)] p-2 space-y-2">
-              <div className="text-[var(--fg-muted)] text-[10px] font-mono uppercase tracking-widest">
-                // new manual script
-              </div>
-              <TerminalInput
-                prompt="title>"
-                placeholder="script title..."
-                value={manualTitle}
-                onChange={(e) => setManualTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateManual()}
-              />
-              <div className="flex gap-1 flex-wrap">
-                {SCRIPT_TYPES.map((t) => (
-                  <button
-                    key={t.value}
-                    onClick={() => setManualType(t.value)}
-                    className={`text-[10px] font-mono px-1.5 py-0.5 border transition-all ${
-                      manualType === t.value
-                        ? "border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]"
-                        : "border-[var(--border)] text-[var(--fg-muted)]"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <TerminalButton variant="primary" size="sm" loading={isPending} onClick={handleCreateManual}>
-                  Create
-                </TerminalButton>
-                <TerminalButton variant="secondary" size="sm" onClick={() => setShowManual(false)}>
-                  Cancel
-                </TerminalButton>
-              </div>
-            </div>
-          )}
-
-          {scripts.length === 0 && !showManual && (
+          {scripts.length === 0 && (
             <div className="text-[var(--fg-muted)] text-xs font-mono text-center py-8 border border-[var(--border)]">
               no scripts yet
             </div>
