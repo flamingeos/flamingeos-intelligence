@@ -3,6 +3,7 @@
  * Run with: node scripts/import-content.mjs
  */
 
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { readFileSync } from "fs";
 import { join, dirname } from "path";
