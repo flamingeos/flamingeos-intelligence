@@ -10,6 +10,7 @@ import {
   removeCompetitor,
   syncCompetitorVideos,
   analyzeCompetitorVideoById,
+  deleteCompetitorVideo,
 } from "@/server/actions/competitors";
 import { Users, RefreshCw, Trash2, Eye, Zap } from "lucide-react";
 
@@ -38,6 +39,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
   competitors: CompetitorWithVideos[];
 }) {
   const [competitors, setCompetitors] = useState(initialCompetitors);
+
   const [newChannel, setNewChannel] = useState("");
   const [message, setMessage] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -88,6 +90,24 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
         setMessage("[OK] video analyzed");
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "analysis failed"}`);
+      }
+    });
+  }
+
+  function handleDeleteVideo(videoId: string, competitorId: string) {
+    startTransition(async () => {
+      try {
+        await deleteCompetitorVideo(videoId);
+        setCompetitors((prev) =>
+          prev.map((c) =>
+            c.id === competitorId
+              ? { ...c, videos: c.videos.filter((v) => v.id !== videoId) }
+              : c
+          )
+        );
+        setMessage("[OK] video removed");
+      } catch (e) {
+        setMessage(`[ERR] ${e instanceof Error ? e.message : "delete failed"}`);
       }
     });
   }
@@ -244,7 +264,7 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-1 shrink-0">
+                        <div className="flex gap-1 shrink-0 items-center">
                           {!v.analyzed && (
                             <TerminalButton
                               variant="secondary"
@@ -261,6 +281,13 @@ export function CompetitorsPanel({ competitors: initialCompetitors }: {
                               [AI]
                             </span>
                           )}
+                          <button
+                            onClick={() => handleDeleteVideo(v.id, selected.id)}
+                            className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1 transition-colors"
+                            title="Remove video"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
                       </div>
                     </div>

@@ -130,6 +130,20 @@ export async function analyzeCompetitorVideoById(videoId: string) {
   return analysis;
 }
 
+export async function deleteCompetitorVideo(videoId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.competitorVideo.deleteMany({
+    where: {
+      id: videoId,
+      competitor: { userId: session.user.id },
+    },
+  });
+
+  revalidatePath("/competitors");
+}
+
 export async function getCompetitors() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

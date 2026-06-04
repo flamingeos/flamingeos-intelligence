@@ -120,3 +120,11 @@ export async function getScript(id: string) {
     where: { id, userId: session.user.id },
   });
 }
+
+export async function deleteScript(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.scriptReport.deleteMany({ where: { id, userId: session.user.id } });
+  revalidatePath("/scripts");
+}

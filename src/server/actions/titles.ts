@@ -56,3 +56,34 @@ export async function getTitleReports() {
     take: 50,
   });
 }
+
+export async function deleteTitleReport(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.titleReport.deleteMany({ where: { id, userId: session.user.id } });
+  revalidatePath("/titles");
+}
+
+export async function deleteTitleFromReport(reportId: string, titleIndex: number) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const report = await db.titleReport.findFirst({
+    where: { id: reportId, userId: session.user.id },
+  });
+  if (!report) throw new Error("Not found");
+
+  const titles = report.titles as { title: string }[];
+  const updated = titles.filter((_, i) => i !== titleIndex);
+
+  await db.titleReport.update({
+    where: { id: reportId },
+    data: {
+      titles: updated as object[],
+      topTitle: updated[0]?.title ?? "",
+    },
+  });
+
+  revalidatePath("/titles");
+}

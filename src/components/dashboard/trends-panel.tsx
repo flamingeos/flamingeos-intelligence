@@ -7,11 +7,11 @@ import { TerminalButton } from "@/components/ui/terminal-button";
 import { TerminalInput } from "@/components/ui/terminal-input";
 import { ScoreBar } from "@/components/ui/progress-bar";
 import { relativeTime } from "@/lib/utils";
-import { researchTrend, scanYouTubeTrending } from "@/server/actions/trends";
-import { TrendingUp, Search } from "lucide-react";
+import { researchTrend, scanYouTubeTrending, deleteTrend } from "@/server/actions/trends";
+import { TrendingUp, Search, Trash2 } from "lucide-react";
 
 export function TrendsPanel({ trends: initialTrends }: { trends: TrendReport[] }) {
-  const [trends] = useState(initialTrends);
+  const [trends, setTrends] = useState(initialTrends);
   const [topic, setTopic] = useState("");
   const [selected, setSelected] = useState<TrendReport | null>(null);
   const [message, setMessage] = useState("");
@@ -25,8 +25,9 @@ export function TrendsPanel({ trends: initialTrends }: { trends: TrendReport[] }
         const report = await researchTrend(topic.trim());
         setMessage("[OK] research complete");
         setTopic("");
-        setSelected(report as TrendReport);
-        window.location.reload();
+        const newTrend = report as TrendReport;
+        setTrends((prev) => [newTrend, ...prev]);
+        setSelected(newTrend);
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "research failed"}`);
       }
@@ -42,6 +43,20 @@ export function TrendsPanel({ trends: initialTrends }: { trends: TrendReport[] }
         window.location.reload();
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "scan failed"}`);
+      }
+    });
+  }
+
+  function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    startTransition(async () => {
+      try {
+        await deleteTrend(id);
+        setTrends((prev) => prev.filter((t) => t.id !== id));
+        if (selected?.id === id) setSelected(null);
+        setMessage("[OK] trend deleted");
+      } catch {
+        setMessage("[ERR] delete failed");
       }
     });
   }
@@ -139,19 +154,28 @@ export function TrendsPanel({ trends: initialTrends }: { trends: TrendReport[] }
                       {trend.source}
                     </span>
                   </div>
-                </div>
-                {trend.overallScore !== null && (
-                  <div className={`text-sm font-bold font-mono shrink-0 ${
-                    trend.overallScore >= 7 ? "text-[var(--fg)] text-glow" :
-                    trend.overallScore >= 4 ? "text-[var(--amber)]" :
-                    "text-[var(--error)]"
-                  }`}>
-                    {trend.overallScore.toFixed(1)}
+                  <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
+                    {relativeTime(trend.createdAt)}
                   </div>
-                )}
-              </div>
-              <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
-                {relativeTime(trend.createdAt)}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {trend.overallScore !== null && (
+                    <span className={`text-sm font-bold font-mono ${
+                      trend.overallScore >= 7 ? "text-[var(--fg)] text-glow" :
+                      trend.overallScore >= 4 ? "text-[var(--amber)]" :
+                      "text-[var(--error)]"
+                    }`}>
+                      {trend.overallScore.toFixed(1)}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => handleDelete(e, trend.id)}
+                    className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1 transition-colors"
+                    title="Delete trend"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

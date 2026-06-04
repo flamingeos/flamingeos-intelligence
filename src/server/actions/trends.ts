@@ -133,6 +133,14 @@ export async function scanYouTubeTrending(regionCode = "US") {
   return reports;
 }
 
+export async function deleteTrend(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  await db.trendReport.deleteMany({ where: { id, userId: session.user.id } });
+  revalidatePath("/trends");
+}
+
 export async function getTrends(status?: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");

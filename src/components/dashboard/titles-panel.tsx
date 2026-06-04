@@ -7,12 +7,12 @@ import { TerminalButton } from "@/components/ui/terminal-button";
 import { TerminalInput } from "@/components/ui/terminal-input";
 import { ScoreBar } from "@/components/ui/progress-bar";
 import { relativeTime } from "@/lib/utils";
-import { generateVideoTitles } from "@/server/actions/titles";
+import { generateVideoTitles, deleteTitleReport, deleteTitleFromReport } from "@/server/actions/titles";
 import type { TitleOption } from "@/types";
-import { Type, Copy, Star } from "lucide-react";
+import { Type, Copy, Star, Trash2 } from "lucide-react";
 
 export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[] }) {
-  const [reports] = useState(initialReports);
+  const [reports, setReports] = useState(initialReports);
   const [topic, setTopic] = useState("");
   const [selected, setSelected] = useState<TitleReport | null>(null);
   const [message, setMessage] = useState("");
@@ -27,8 +27,9 @@ export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[
         const report = await generateVideoTitles(topic.trim());
         setMessage("[OK] titles generated");
         setTopic("");
-        setSelected(report as TitleReport);
-        window.location.reload();
+        const newReport = report as TitleReport;
+        setReports((prev) => [newReport, ...prev]);
+        setSelected(newReport);
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "generation failed"}`);
       }
@@ -39,6 +40,44 @@ export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[
     navigator.clipboard.writeText(title);
     setCopiedTitle(title);
     setTimeout(() => setCopiedTitle(null), 1500);
+  }
+
+  function handleDeleteReport(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    startTransition(async () => {
+      try {
+        await deleteTitleReport(id);
+        setReports((prev) => prev.filter((r) => r.id !== id));
+        if (selected?.id === id) setSelected(null);
+        setMessage("[OK] report deleted");
+      } catch {
+        setMessage("[ERR] delete failed");
+      }
+    });
+  }
+
+  function handleDeleteTitle(reportId: string, titleIndex: number, titleText: string) {
+    startTransition(async () => {
+      try {
+        await deleteTitleFromReport(reportId, titleIndex);
+        // Optimistically update selected report's titles
+        setSelected((prev) => {
+          if (!prev || prev.id !== reportId) return prev;
+          const titles = (prev.titles as unknown as TitleOption[]).filter((_, i) => i !== titleIndex);
+          return { ...prev, titles: titles as unknown, topTitle: titles[0]?.title ?? "" } as TitleReport;
+        });
+        setReports((prev) =>
+          prev.map((r) => {
+            if (r.id !== reportId) return r;
+            const titles = (r.titles as unknown as TitleOption[]).filter((_, i) => i !== titleIndex);
+            return { ...r, titles: titles as unknown, topTitle: titles[0]?.title ?? "" } as TitleReport;
+          })
+        );
+        setMessage(`[OK] removed "${titleText.slice(0, 40)}..."`);
+      } catch {
+        setMessage("[ERR] delete failed");
+      }
+    });
   }
 
   return (
@@ -106,16 +145,27 @@ export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[
                   : "hover:border-[var(--fg-dim)]"
               }`}
             >
-              <div className="text-sm font-mono text-[var(--fg)] font-bold truncate">
-                {report.topic}
-              </div>
-              {report.topTitle && (
-                <div className="text-xs text-[var(--fg-muted)] font-mono mt-1 truncate">
-                  &gt; {report.topTitle}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-mono text-[var(--fg)] font-bold truncate">
+                    {report.topic}
+                  </div>
+                  {report.topTitle && (
+                    <div className="text-xs text-[var(--fg-muted)] font-mono mt-1 truncate">
+                      &gt; {report.topTitle}
+                    </div>
+                  )}
+                  <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
+                    {relativeTime(report.createdAt)}
+                  </div>
                 </div>
-              )}
-              <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
-                {relativeTime(report.createdAt)}
+                <button
+                  onClick={(e) => handleDeleteReport(e, report.id)}
+                  className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1 shrink-0 transition-colors"
+                  title="Delete report"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
               </div>
             </div>
           ))}
@@ -159,17 +209,26 @@ export function TitlesPanel({ reports: initialReports }: { reports: TitleReport[
                             <ScoreBar label="Search" score={t.searchabilityScore} />
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleCopy(t.title)}
-                          className="text-[var(--fg-muted)] hover:text-[var(--fg)] p-1 shrink-0"
-                          title="Copy title"
-                        >
-                          {copiedTitle === t.title ? (
-                            <span className="text-xs text-[var(--fg)]">[✓]</span>
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            onClick={() => handleCopy(t.title)}
+                            className="text-[var(--fg-muted)] hover:text-[var(--fg)] p-1 transition-colors"
+                            title="Copy title"
+                          >
+                            {copiedTitle === t.title ? (
+                              <span className="text-xs text-[var(--fg)]">[✓]</span>
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTitle(selected.id, i, t.title)}
+                            className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1 transition-colors"
+                            title="Remove title"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

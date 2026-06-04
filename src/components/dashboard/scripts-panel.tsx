@@ -6,8 +6,8 @@ import { TerminalCard } from "@/components/ui/terminal-card";
 import { TerminalButton } from "@/components/ui/terminal-button";
 import { TerminalInput } from "@/components/ui/terminal-input";
 import { relativeTime } from "@/lib/utils";
-import { generateVideoScript } from "@/server/actions/scripts";
-import { FileText, Copy } from "lucide-react";
+import { generateVideoScript, deleteScript } from "@/server/actions/scripts";
+import { FileText, Copy, Trash2 } from "lucide-react";
 
 const SCRIPT_TYPES = [
   { value: "long_form", label: "Long Form" },
@@ -38,8 +38,9 @@ export function ScriptsPanel({ scripts: initialScripts }: { scripts: ScriptRepor
         const report = await generateVideoScript(topic.trim(), scriptType, duration);
         setMessage("[OK] script generated");
         setTopic("");
-        setSelected(report as ScriptReport);
-        window.location.reload();
+        const newScript = report as ScriptReport;
+        setScripts((prev) => [newScript, ...prev]);
+        setSelected(newScript);
       } catch (e) {
         setMessage(`[ERR] ${e instanceof Error ? e.message : "generation failed"}`);
       }
@@ -50,6 +51,20 @@ export function ScriptsPanel({ scripts: initialScripts }: { scripts: ScriptRepor
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    startTransition(async () => {
+      try {
+        await deleteScript(id);
+        setScripts((prev) => prev.filter((s) => s.id !== id));
+        if (selected?.id === id) setSelected(null);
+        setMessage("[OK] script deleted");
+      } catch {
+        setMessage("[ERR] delete failed");
+      }
+    });
   }
 
   return (
@@ -151,21 +166,32 @@ export function ScriptsPanel({ scripts: initialScripts }: { scripts: ScriptRepor
                   : "hover:border-[var(--fg-dim)]"
               }`}
             >
-              <div className="text-sm font-mono text-[var(--fg)] font-bold truncate">
-                {script.title}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="badge-dim text-xs font-mono px-1">
-                  {script.scriptType.replace("_", " ").toUpperCase()}
-                </span>
-                {script.wordCount && (
-                  <span className="text-xs text-[var(--fg-muted)] font-mono">
-                    {script.wordCount} words
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
-                {relativeTime(script.createdAt)}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-mono text-[var(--fg)] font-bold truncate">
+                    {script.title}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="badge-dim text-xs font-mono px-1">
+                      {script.scriptType.replace("_", " ").toUpperCase()}
+                    </span>
+                    {script.wordCount && (
+                      <span className="text-xs text-[var(--fg-muted)] font-mono">
+                        {script.wordCount} words
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-[var(--fg-muted)] font-mono mt-1">
+                    {relativeTime(script.createdAt)}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => handleDelete(e, script.id)}
+                  className="text-[var(--fg-muted)] hover:text-[var(--error)] p-1 shrink-0 transition-colors"
+                  title="Delete script"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
               </div>
             </div>
           ))}
