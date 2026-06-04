@@ -17,7 +17,9 @@
       "Bash(echo \"exit: $?\")",
       "Bash(git config *)",
       "Bash(npx vercel *)",
-      "Bash(npm config *)"
+      "Bash(npm config *)",
+      "Bash(npx tsc *)",
+      "Bash(node *)"
     ]
   }
 }
